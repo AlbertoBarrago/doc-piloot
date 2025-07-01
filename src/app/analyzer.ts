@@ -1,5 +1,5 @@
 import {Octokit} from "octokit";
-import {getRepoFiles} from "./github";
+import {getRepoFiles} from "./github.js";
 
 export async function getRepoFilesAnalysis(octokit: Octokit, owner: string, repo: string): Promise<string> {
     const files = await getRepoFiles(octokit, owner, repo);

@@ -1,22 +1,35 @@
+# .github/workflows/generate-readme.yml
 name: Generate README
 
 on:
+  workflow_dispatch:   # Manual trigger
   push:
     branches:
       - main
+      - master
 
 jobs:
-  build:
+  generate-readme:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 18
+          cache: 'npm'
 
-      - run: npm install
-      - run: npx ts-node scripts/localTest.ts
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run README generator script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node dist/scripts/localTest.js

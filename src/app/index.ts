@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import { getRepoFilesAnalysis } from "./analyzer";
-import { generateReadmeFromAnalysis } from "./gemini";
+import { getRepoFilesAnalysis } from "./analyzer.js";
+import { generateReadmeFromAnalysis } from "./gemini.js";
 import { Octokit } from "octokit";
 
 dotenv.config();

@@ -4,12 +4,14 @@
   "description": "Your AI copilot for project documentation.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build" : "tsc",
+    "start": "cross-env NODE_ENV=production node dist/src/app/index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
     "@types/node": "^24.0.8",
     "ts-node": "^10.9.2",

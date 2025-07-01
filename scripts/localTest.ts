@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { Octokit } from "octokit";
-import { getRepoFilesAnalysis } from "../src/app/analyzer";
-import { generateReadmeFromAnalysis } from "../src/app/gemini";
+import { getRepoFilesAnalysis } from "../src/app/analyzer.js";
+import { generateReadmeFromAnalysis } from "../src/app/gemini.js";
 
 dotenv.config();
 
@@ -11,8 +11,8 @@ async function test() {
 
     const octokit = new Octokit({ auth: githubToken });
 
-    const owner = "your-github-username";
-    const repo = "your-repo-name";
+    const owner = "albertobarrago";
+    const repo = "doc-pilot";
 
     const analysis = await getRepoFilesAnalysis(octokit, owner, repo);
     const readme = await generateReadmeFromAnalysis(analysis);
