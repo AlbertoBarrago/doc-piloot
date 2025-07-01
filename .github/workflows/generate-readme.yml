@@ -1,8 +1,7 @@
-# .github/workflows/generate-readme.yml
 name: Generate README
 
 on:
-  workflow_dispatch:   # Manual trigger
+  workflow_dispatch:
   push:
     branches:
       - main

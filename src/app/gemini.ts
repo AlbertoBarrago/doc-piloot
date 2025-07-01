@@ -7,7 +7,7 @@ const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) throw new Error("GEMINI_API_KEY missing in .env");
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 export async function generateReadmeFromAnalysis(analysisText: string): Promise<string> {
     const prompt = `You're an AI assistant helping developers generate clear README.md files.
