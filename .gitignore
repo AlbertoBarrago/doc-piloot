@@ -272,4 +272,7 @@ dist
 # Node
 node_modules
 
+# IDEA
+.idea
+
 # End of https://www.toptal.com/developers/gitignore/api/node,git,intellij
