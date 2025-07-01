@@ -275,4 +275,7 @@ node_modules
 # IDEA
 .idea
 
+#Webhook.sh
+webhook.sh
+
 # End of https://www.toptal.com/developers/gitignore/api/node,git,intellij
