@@ -8,11 +8,9 @@ import { pushReadme } from "../services/pushReadme.js";
 import path from 'path';
 import {verifySignature} from "../services/commons.js";
 
-
 dotenv.config();
 
 const app = express();
-
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 if (!WEBHOOK_SECRET) {
@@ -34,7 +32,6 @@ app.use(express.json({
 }));
 
 const publicPath = path.join(process.cwd(), 'public');
-
 app.use(express.static(publicPath));
 
 app.get('/', (req: Request, res: Response) => {
@@ -42,9 +39,7 @@ app.get('/', (req: Request, res: Response) => {
     res.sendFile(indexPath);
 });
 
-
-// @ts-ignore
-app.post("/webhook", async (req: Request, res: Response) => {
+app.post("/webhook", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
         const signature = req.headers["x-hub-signature-256"];
         if (!signature || Array.isArray(signature)) {
@@ -62,12 +57,26 @@ app.post("/webhook", async (req: Request, res: Response) => {
 
         const payload = req.body;
 
-        if (!payload.installation) {
-            return res.status(400).send("No installation info in payload");
+        if (payload.ref === undefined) {
+            return res.status(200).send("Skipping: Not a push event");
         }
 
-        if (!payload.repository) {
-            return res.status(400).send("No repository info in payload");
+        const branch = payload.ref?.replace('refs/heads/', '');
+        if (branch !== 'main') {
+            res.status(200).send("Skipping: Not on main branch");
+            return;
+        }
+
+        const shouldGenerateDoc = req.query.doc === 'true' ||
+            (payload.head_commit && payload.head_commit.message.includes('--doc'));
+
+        if (!shouldGenerateDoc) {
+            res.status(200).send("Skipping documentation generation. Use ?doc=true parameter to generate README.");
+            return;
+        }
+
+        if (!payload.installation || !payload.repository) {
+            return res.status(400).send("Missing installation or repository info");
         }
 
         const installationId: number | undefined = payload.installation.id;
@@ -89,20 +98,12 @@ app.post("/webhook", async (req: Request, res: Response) => {
 
         const analysisText = await getRepoFilesAnalysis(octokit, owner, repo);
         const readmeContent = await generateReadmeFromAnalysis(analysisText);
-        const shouldGenerateDoc = req.query.doc === 'true' ||
-            payload.action === 'doc' ||
-            (payload.head_commit && payload.head_commit.message.includes('--doc'));
-
-
-        if (!shouldGenerateDoc) {
-            return res.status(200).send("Skipping documentation generation. Use ?doc=true parameter to generate README.");
-        }
-
-        console.log(`=== GENERATED README for ${owner}/${repo} ===\n`, readmeContent);
 
         if (!readmeContent) {
             throw new Error("Generated README content is empty or undefined");
         }
+
+        console.log(`=== GENERATING README for ${owner}/${repo} ===`);
 
         await pushReadme({
             octokit,
