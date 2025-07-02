@@ -57,7 +57,7 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
         const eventType = req.headers["x-github-event"] as string;
         console.log("eventType:", eventType);
 
-        if (signature && req.rawBody) {
+        if (signature && rawBody) {
             verifySignature(rawBody, signature, WEBHOOK_SECRET);
         } else {
             console.warn("⚠️ Missing signature or raw body — skipping validation.");
