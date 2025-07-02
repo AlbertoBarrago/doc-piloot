@@ -48,13 +48,12 @@ app.use(express.json({
 
 app.use((req: Request, res: Response, next) => {
     if (req.method === 'POST' && !req.body) {
-        console.log('Raw payload ricevuto:', req.rawBody?.toString());
+        console.log('Raw payload:', req.rawBody?.toString());
         try {
             req.body = JSON.parse(req.rawBody?.toString() || '{}');
-            console.log('Payload convertito manualmente in JSON');
         } catch (e) {
-            console.error('Errore nel parsing del body:', e);
-            console.log('Contenuto ricevuto non è un JSON valido');
+            console.error('Errors parsing body:', e);
+            console.log('Content not valid');
         }
     }
     next();
@@ -81,17 +80,17 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
 
         const signature = req.headers["x-hub-signature-256"];
         if (!signature || Array.isArray(signature)) {
-            return res.status(401).send("Missing or invalid signature");
+            return console.error("Missing X-Hub-Signature-256 header");
         }
 
         const rawBody = req.rawBody?.toString("utf-8");
         if (!rawBody) {
-            return res.status(400).send("Missing raw request body");
+            return console.error("Missing rawBody");
         }
 
 
         if (!verifySignature(WEBHOOK_SECRET, rawBody, signature)) {
-            return res.status(401).send("Invalid signature");
+            return console.error("Invalid signature");
         }
 
         const payload = req.body;
