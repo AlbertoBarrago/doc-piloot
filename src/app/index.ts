@@ -12,6 +12,8 @@ import {verifySignature} from "../services/commons.js";
 dotenv.config();
 
 const app = express();
+const publicPath = path.join(process.cwd(), 'public');
+
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 if (!WEBHOOK_SECRET) {
@@ -38,7 +40,6 @@ app.use((req: Request, res: Response, next) => {
     });
 });
 
-
 app.use(express.json({
     verify: (req: Request, res: Response, buf: Buffer) => {
         req.rawBody = buf;
@@ -59,9 +60,6 @@ app.use((req: Request, res: Response, next) => {
     next();
 });
 
-
-
-const publicPath = path.join(process.cwd(), 'public');
 app.use(express.static(publicPath));
 
 app.get('/', (req: Request, res: Response) => {
@@ -80,17 +78,6 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
         console.log("Event Type:", req.headers["x-github-event"]);
         console.log("Headers:", JSON.stringify(req.headers, null, 2));
 
-        // Log del corpo raw
-        console.log("Raw Body exists:", !!req.rawBody);
-        if (req.rawBody) {
-            console.log("Raw Body length:", req.rawBody.length);
-            console.log("Raw Body content:", req.rawBody.toString('utf8'));
-        }
-
-        // Log del corpo parsato
-        console.log("Body exists:", !!req.body);
-        console.log("Body content:", JSON.stringify(req.body, null, 2));
-
 
         const signature = req.headers["x-hub-signature-256"];
         if (!signature || Array.isArray(signature)) {
@@ -101,6 +88,7 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
         if (!rawBody) {
             return res.status(400).send("Missing raw request body");
         }
+
 
         if (!verifySignature(WEBHOOK_SECRET, rawBody, signature)) {
             return res.status(401).send("Invalid signature");
@@ -150,17 +138,13 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
         const analysisText = await getRepoFilesAnalysis(octokit, owner, repo);
         const readmeContent = await generateReadmeFromAnalysis(analysisText);
 
-        if (!readmeContent) {
-            throw new Error("Generated README content is empty or undefined");
-        }
-
         console.log(`=== GENERATING README for ${owner}/${repo} ===`);
 
         await pushReadme({
             octokit,
             owner,
             repo,
-            content: readmeContent,
+            content: readmeContent ?? null,
         });
 
         res.status(200).send("README generated and pushed successfully");
