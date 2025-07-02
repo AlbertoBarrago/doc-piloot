@@ -1,15 +1,18 @@
 import dotenv from "dotenv";
-import express, { Request, Response, NextFunction } from "express";
-import crypto from "crypto";
+import express, { Request, Response } from "express";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "octokit";
 import { getRepoFilesAnalysis } from "./analyzer.js";
 import { generateReadmeFromAnalysis } from "./gemini.js";
-import { pushReadme } from "./pushReadme.js";
+import { pushReadme } from "../services/pushReadme.js";
+import path from 'path';
+import {verifySignature} from "../services/commons.js";
+
 
 dotenv.config();
 
 const app = express();
+
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 if (!WEBHOOK_SECRET) {
@@ -30,15 +33,15 @@ app.use(express.json({
     }
 }));
 
-function verifySignature(secret: string, payload: string, signature: string): boolean {
-    const hmac = crypto.createHmac("sha256", secret);
-    const digest = "sha256=" + hmac.update(payload).digest("hex");
-    try {
-        return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
-    } catch {
-        return false;
-    }
-}
+const publicPath = path.join(process.cwd(), 'public');
+
+app.use(express.static(publicPath));
+
+app.get('/', (req: Request, res: Response) => {
+    const indexPath = path.join(publicPath, 'index.html');
+    res.sendFile(indexPath);
+});
+
 
 // @ts-ignore
 app.post("/webhook", async (req: Request, res: Response) => {
@@ -86,6 +89,11 @@ app.post("/webhook", async (req: Request, res: Response) => {
 
         const analysisText = await getRepoFilesAnalysis(octokit, owner, repo);
         const readmeContent = await generateReadmeFromAnalysis(analysisText);
+        const shouldGenerateDoc = req.query.doc === 'true' || payload.action === 'doc';
+
+        if (!shouldGenerateDoc) {
+            return res.status(200).send("Skipping documentation generation. Use ?doc=true parameter to generate README.");
+        }
 
         console.log(`=== GENERATED README for ${owner}/${repo} ===\n`, readmeContent);
 

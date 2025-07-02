@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doc-Piloot Service</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #333;
+        }
+        .container {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            margin-bottom: 1rem;
+        }
+        .status {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #22c55e;
+            color: white;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        .endpoints {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        code {
+            background-color: #f1f5f9;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Doc-piloot Service</h1>
+    <div class="status">Service is running</div>
+
+    <div class="endpoints">
+        <h2>Available Endpoints:</h2>
+        <ul>
+            <li><code>POST /webhook</code> - GitHub webhook endpoint for automated README generation</li>
+        </ul>
+    </div>
+
+    <div class="info">
+        <h2>Service Information</h2>
+        <p>This service automatically generates and updates README files for GitHub repositories using AI.</p>
+        <p>To use this service:</p>
+        <ol>
+            <li>Install the GitHub App on your repository</li>
+            <li>Push changes to your repository</li>
+            <li>The service will automatically generate and update your README</li>
+        </ol>
+    </div>
+</div>
+</body>
+</html>

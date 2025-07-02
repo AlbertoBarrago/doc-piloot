@@ -105,16 +105,12 @@ doc-pilot/
 ├── package-lock.json  # Records the exact versions of dependencies
 ├── package.json       # Project metadata and dependencies
 ├── tsconfig.json      # TypeScript compiler configuration
-├── scripts/           # Contains utility scripts
-│   └── ...
 └── src/               # Source code directory
     ├── index.ts         # Entry point of the application
     └── ...              # Other source files (e.g., API routes, utility functions)
 ```
 
 ## Contributing
-
-Contributions are welcome! If you'd like to contribute to Doc-Pilot, please follow these steps:
 
 1.  Fork the repository.
 2.  Create a new branch for your feature or bug fix.
@@ -123,9 +119,3 @@ Contributions are welcome! If you'd like to contribute to Doc-Pilot, please foll
 
 Please ensure that your code adheres to the project's coding standards and includes appropriate tests.
 
-## License
-
-(Add License Information Here - e.g., MIT License)
-
-This project is licensed under the MIT License. See the `LICENSE` file for more information.
-```
