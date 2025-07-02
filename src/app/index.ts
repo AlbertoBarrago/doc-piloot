@@ -101,7 +101,25 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
 
         console.log("✅ Octokit instance created");
 
-        const shouldGenerateDoc = payload.head_commit?.message?.includes("--doc");
+        const branch = payload.ref?.replace("refs/heads/", "");
+
+        if (!branch || branch !== "main") {
+            return res.status(200).send("Skipping: Not on main branch");
+        }
+
+        let commitMessage = payload.head_commit?.message;
+
+        if (!commitMessage) {
+            const { data: commits } = await octokit.rest.repos.listCommits({
+                owner,
+                repo,
+                sha: branch,
+                per_page: 1,
+            });
+            commitMessage = commits[0]?.commit?.message || "";
+        }
+
+        const shouldGenerateDoc = commitMessage.includes("--doc");
 
         console.log("shouldGenerateDoc:", shouldGenerateDoc);
 
