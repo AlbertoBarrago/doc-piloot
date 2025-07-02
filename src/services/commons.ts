@@ -1,19 +1,16 @@
 
 import crypto from 'crypto';
 
-export function verifySignature(secret: string, payload: string, signature: string): boolean {
-    const hmac = crypto.createHmac("sha256", secret);
-    const digest = "sha256=" + hmac.update(payload).digest("hex");
+export function validateSignature(payload: Buffer, signature: string, secret: string): boolean {
+    if (!payload || !signature || !secret) return false;
 
-    try {
-        const actualSignature = signature.startsWith("sha256=") ? signature : "sha256=" + signature;
+    const hmac = crypto.createHmac('sha256', secret);
+    const digest = 'sha256=' + hmac.update(payload).digest('hex');
 
-        console.log("Expected signature:", digest);
-        console.log("Actual signature:", actualSignature);
+    console.log("Computed signature:", digest);
+    console.log("GitHub signature:", signature);
 
-        return crypto.timingSafeEqual(Buffer.from(actualSignature), Buffer.from(digest));
-    } catch (error) {
-        console.error("Error verifying signature:", error);
-        return false;
-    }
+    // Use a safe string comparison instead of timing-safe equal for string comparison
+    return signature.length === digest.length &&
+        signature.split('').every((char, i) => char === digest[i]);
 }
