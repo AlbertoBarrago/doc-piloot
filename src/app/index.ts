@@ -68,20 +68,6 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
 
         let payload = req.body;
 
-        if (!payload || Object.keys(payload).length === 0) {
-            if (req.rawBody && req.rawBody.length > 0) {
-                try {
-                    payload = JSON.parse(req.rawBody.toString("utf8"));
-                    console.log("✅ Manual parsing successful");
-                } catch (err) {
-                    console.error("❌ Manual parse failed:", err);
-                    return res.status(400).send("Invalid JSON payload");
-                }
-            } else {
-                return res.status(400).send("Empty payload received");
-            }
-        }
-
         const {installation, repository} = payload;
         if (!installation?.id || !repository?.name || !repository?.owner?.login) {
             console.error("❌ Missing installation or repo info");
