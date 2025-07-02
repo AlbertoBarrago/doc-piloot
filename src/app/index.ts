@@ -6,15 +6,15 @@ import { getRepoFilesAnalysis } from "./analyzer.js";
 import { generateReadmeFromAnalysis } from "./gemini.js";
 import { pushReadme } from "../services/pushReadme.js";
 import path from 'path';
-import {validateSignature} from "../services/validateSignature.js";
-import {captureRawBody} from "../middleware/index.js";
+import { validateSignature } from "../services/validateSignature.js";
+import { captureRawBody } from "../middleware/index.js";
 
 dotenv.config();
 
 const app = express();
 const publicPath = path.join(process.cwd(), 'public');
-
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+
 if (!WEBHOOK_SECRET) {
     throw new Error("WEBHOOK_SECRET is not set in environment");
 }
@@ -31,7 +31,7 @@ app.use(captureRawBody);
 
 app.use(express.json({
     verify: (req: Request, res: Response, buf: Buffer) => {
-        console.log("JSON parser processed body successfully");
+        req.rawBody = buf;
     }
 }));
 
@@ -42,7 +42,7 @@ app.get('/', (req: Request, res: Response) => {
     res.sendFile(indexPath);
 });
 
-app.post("/webhook", async (req: express.Request, res: express.Response): Promise<any> => {
+app.post("/webhook", async (req: Request, res: Response): Promise<any> => {
     try {
         console.log("=== Webhook Request ===");
         console.log("Method:", req.method);
@@ -57,7 +57,7 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
             console.log("Skipping signature validation (missing signature or raw body)");
         }
 
-        // Handle ping events from GitHub
+        // Handle GitHub ping
         if (req.headers["x-github-event"] === "ping") {
             console.log("Received ping event from GitHub");
             return res.status(200).send("Webhook configured successfully!");
@@ -66,20 +66,18 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
         let payload = req.body;
 
         if (!payload || Object.keys(payload).length === 0) {
-            console.log("Body is empty, attempting manual parsing");
-
+            console.log("Empty body, attempting manual parse");
             if (req.rawBody && req.rawBody.length > 0) {
                 try {
                     const rawBodyStr = req.rawBody.toString('utf8');
-                    console.log("Raw body string (first 100 chars):", rawBodyStr.substring(0, 100));
+                    console.log("Raw body (first 100 chars):", rawBodyStr.substring(0, 100));
                     payload = JSON.parse(rawBodyStr);
                     console.log("Manual parsing successful, keys:", Object.keys(payload));
-                } catch (parseError) {
-                    console.error("Failed to parse JSON manually:", parseError);
+                } catch (err) {
+                    console.error("Manual parse failed:", err);
                     return res.status(200).send("Failed to parse webhook payload");
                 }
             } else {
-                console.log("No raw body available");
                 return res.status(200).send("No payload received");
             }
         }
@@ -87,11 +85,51 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
         const eventType = req.headers["x-github-event"] as string;
         console.log(`Processing ${eventType} event`);
 
+        if (!payload.installation || !payload.repository) {
+            console.error("Missing installation or repository info");
+            return res.status(200).send("Missing installation or repository info");
+        }
+
+        const installationId = payload.installation.id;
+        const owner = payload.repository.owner?.login;
+        const repo = payload.repository.name;
+
+        if (!installationId || !owner || !repo) {
+            console.error("Missing required data:", { installationId, owner, repo });
+            return res.status(200).send("Missing installationId, owner, or repo");
+        }
+
+        const octokit = new Octokit({
+            authStrategy: createAppAuth,
+            auth: {
+                appId: Number(process.env.APP_ID),
+                privateKey: process.env.PRIVATE_KEY!.replace(/\\n/g, "\n"),
+                installationId,
+            },
+        });
+
+        // === Workflow Run ===
         if (eventType === "workflow_run") {
             console.log("Workflow run event received");
 
-            const workflowName = payload.workflow_run?.workflow_name;
-            console.log(`Workflow name: ${workflowName}`);
+            const workflowRun = payload.workflow_run;
+            let workflowName = undefined;
+
+            if (workflowRun?.workflow_id) {
+                console.log("Workflow ID:", workflowRun.workflow_id);
+                try {
+                    const workflowResp = await octokit.rest.actions.getWorkflow({
+                        owner,
+                        repo,
+                        workflow_id: workflowRun.workflow_id,
+                    });
+                    workflowName = workflowResp.data.name;
+                } catch (err) {
+                    console.error("Failed to fetch workflow name:", err);
+                }
+            }
+
+            console.log("Workflow name:", workflowName);
 
             const shouldProcess = req.query.doc === 'true' ||
                 (workflowName && workflowName.includes('documentation'));
@@ -101,8 +139,10 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
                 return res.status(200).send("Skipping: Not a documentation workflow");
             }
         }
+
+        // === Push Event ===
         else if (eventType === "push") {
-            if (!payload || !payload.ref) {
+            if (!payload.ref) {
                 console.log("Missing ref field in push event");
                 return res.status(200).send("Skipping: Missing ref field in push event");
             }
@@ -115,58 +155,36 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
                 return res.status(200).send("Skipping: Not on main branch");
             }
 
-            console.log("Checking commit message:", payload.head_commit?.message);
             const shouldGenerateDoc = req.query.doc === 'true' ||
-                (payload.head_commit && payload.head_commit.message.includes('--doc'));
+                (payload.head_commit?.message?.includes('--doc'));
 
             console.log("Should generate documentation:", shouldGenerateDoc);
             if (!shouldGenerateDoc) {
-                return res.status(200).send("Skipping documentation generation. Use ?doc=true parameter or include --doc in commit message.");
+                return res.status(200).send("Skipping documentation generation. Use ?doc=true or include --doc in commit message.");
             }
         }
+
+        // === Unsupported Event ===
         else {
             console.log(`Skipping unsupported event type: ${eventType}`);
             return res.status(200).send(`Skipping unsupported event type: ${eventType}`);
         }
 
-        if (!payload.installation || !payload.repository) {
-            console.error("Missing installation or repository info");
-            return res.status(200).send("Missing installation or repository info");
-        }
-
-        const installationId: number | undefined = payload.installation.id;
-        const owner: string | undefined = payload.repository.owner?.login;
-        const repo: string | undefined = payload.repository.name;
-
-        if (!installationId || !owner || !repo) {
-            console.error("Missing required data:", { installationId, owner, repo });
-            return res.status(200).send("Missing installationId, owner, or repo");
-        }
-
-        console.log(`Starting processing for ${owner}/${repo} with installationId ${installationId}`);
-
-        const octokit = new Octokit({
-            authStrategy: createAppAuth,
-            auth: {
-                appId: Number(process.env.APP_ID),
-                privateKey: process.env.PRIVATE_KEY!.replace(/\\n/g, "\n"),
-                installationId,
-            },
-        });
+        // === Continue to Generate README ===
+        console.log(`Starting README generation for ${owner}/${repo}`);
 
         console.log("Analyzing repository files...");
         const analysisText = await getRepoFilesAnalysis(octokit, owner, repo);
-        console.log("Repository analysis complete, generating README...");
 
+        console.log("Generating README content...");
         const readmeContent = await generateReadmeFromAnalysis(analysisText);
+
         if (!readmeContent) {
-            console.error("Generated README content is empty");
+            console.error("Generated README is empty");
             return res.status(200).send("Empty README generated");
         }
 
-        console.log(`=== GENERATING README for ${owner}/${repo} ===`);
         console.log("Pushing README to repository...");
-
         await pushReadme({
             octokit,
             owner,
@@ -174,10 +192,10 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
             content: readmeContent,
         });
 
-        console.log("README generated and pushed successfully!");
+        console.log("✅ README generated and pushed successfully");
         return res.status(200).send("README generated and pushed successfully");
     } catch (error) {
-        console.error("Error handling webhook:", error);
+        console.error("❌ Error handling webhook:", error);
         return res.status(500).send("Internal Server Error");
     }
 });
