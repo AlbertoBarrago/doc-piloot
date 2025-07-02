@@ -1,13 +1,12 @@
 import dotenv from "dotenv";
-import express, {Request, Response} from "express";
-import {createAppAuth} from "@octokit/auth-app";
-import {Octokit} from "octokit";
-import {getRepoFilesAnalysis} from "./analyzer.js";
-import {generateReadmeFromAnalysis} from "./gemini.js";
-import {pushReadme} from "../services/pushReadme.js";
+import express, { Request, Response } from "express";
+import { createAppAuth } from "@octokit/auth-app";
+import { Octokit } from "octokit";
+import { getRepoFilesAnalysis } from "./analyzer.js";
+import { generateReadmeFromAnalysis } from "./gemini.js";
+import { pushReadme } from "../services/pushReadme.js";
 import path from "path";
-import {verifySignature} from "../services/validateSignature.js";
-import {captureRawBody} from "../middleware/index.js";
+import { verifySignature } from "../services/validateSignature.js";
 
 dotenv.config();
 
@@ -35,33 +34,34 @@ const publicPath = path.join(process.cwd(), "public");
 
 app.use(express.static(publicPath));
 
-app.use("/webhook", captureRawBody);
-
-app.use(express.json({
-    verify: (req: Request, _res: Response, buf: Buffer) => {
-        req.rawBody = buf;
+app.use((req, res, next) => {
+    if (req.path === "/webhook") {
+        return next();
     }
-}));
+    express.json({
+        verify: (req: Request, _res: Response, buf: Buffer) => {
+            req.rawBody = buf;
+        },
+    })(req, res, next);
+});
 
 app.get("/", (_req: Request, res: Response) => {
     const indexPath = path.join(publicPath, "index.html");
     res.sendFile(indexPath);
 });
 
-app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Response): Promise<any> => {
+app.post("/webhook", express.raw({ type: "*/*" }), async (req: Request, res: Response): Promise<any> => {
     try {
         const rawBody = req.body;
+        const signature = req.headers["x-hub-signature-256"] as string | undefined;
+        const eventType = req.headers["x-github-event"] as string | undefined;
 
-        console.log("=== Incoming GitHub Webhook ===");
-        const signature = req.headers["x-hub-signature-256"] as string;
-        const eventType = req.headers["x-github-event"] as string;
-        console.log("eventType:", eventType);
-
-        if (signature && rawBody) {
-            verifySignature(rawBody, signature, WEBHOOK_SECRET);
-        } else {
+        if (!signature || !rawBody) {
             console.warn("⚠️ Missing signature or raw body — skipping validation.");
+            return res.status(400).send("Missing signature or raw body");
         }
+
+        verifySignature(rawBody, signature, WEBHOOK_SECRET);
 
         if (eventType === "ping") {
             console.log("✅ Ping event received.");
@@ -71,15 +71,15 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
         let payload;
         try {
             payload = JSON.parse(rawBody.toString("utf8"));
-            console.log("✅ Manual parsing successful", payload);
+            console.log("✅ Payload parsed:", payload);
         } catch (err) {
-            console.error("❌ Manual parse failed:", err);
+            console.error("❌ Failed to parse JSON payload:", err);
             return res.status(400).send("Invalid JSON payload");
         }
 
-        const {installation, repository} = payload;
+        const { installation, repository } = payload;
         if (!installation?.id || !repository?.name || !repository?.owner?.login) {
-            console.error("❌ Missing installation or repo info");
+            console.error("❌ Missing installation or repository info");
             return res.status(400).send("Missing installation or repository information");
         }
 
@@ -87,10 +87,7 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
         const owner = repository.owner.login;
         const repo = repository.name;
 
-        console.log("=== Processing repository ===");
-        console.log(`Owner: ${owner}`);
-        console.log(`Repo: ${repo}`);
-        console.log(`Installation ID: ${installationId}`);
+        console.log(`Processing repo: ${owner}/${repo}, Installation ID: ${installationId}`);
 
         const octokit = new Octokit({
             authStrategy: createAppAuth,
@@ -130,14 +127,8 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
             return res.status(200).send("Skipping: Use ?doc=true or add --doc to commit message");
         }
 
-        if (shouldGenerateDoc) {
-            if (!branch || branch !== "main") {
-                console.log("Skipping: Not on main branch", branch ?? null);
-                return res.status(200).send("Skipping: Not on main branch");
-            }
-        }
-
         console.log(`Generating README for ${owner}/${repo}`);
+
         const analysisText = await getRepoFilesAnalysis(octokit, owner, repo);
         const readmeContent = await generateReadmeFromAnalysis(analysisText);
 
@@ -146,7 +137,7 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
             return res.status(200).send("Empty README generated");
         }
 
-        await pushReadme({octokit, owner, repo, content: readmeContent});
+        await pushReadme({ octokit, owner, repo, content: readmeContent });
 
         console.log("✅ README generated and pushed");
         return res.status(200).send("README successfully generated and pushed");
