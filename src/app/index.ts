@@ -89,6 +89,11 @@ app.post("/webhook", async (req: Request, res: Response) => {
 
         const analysisText = await getRepoFilesAnalysis(octokit, owner, repo);
         const readmeContent = await generateReadmeFromAnalysis(analysisText);
+        const shouldGenerateDoc = req.query.doc === 'true' || payload.action === 'doc';
+
+        if (!shouldGenerateDoc) {
+            return res.status(200).send("Skipping documentation generation. Use ?doc=true parameter to generate README.");
+        }
 
         console.log(`=== GENERATED README for ${owner}/${repo} ===\n`, readmeContent);
 

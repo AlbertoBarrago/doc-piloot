@@ -10,7 +10,7 @@
     "postbuild": "npm run copy-files",
     "start": "cross-env NODE_ENV=production node dist/src/app/index.js",
     "local:test": "tsx tests/localTest.ts",
-    "local:test:push": "tsx tests/localTest.ts --push"
+    "local:test:push": "tsx tests/localTest.ts --doc"
   },
   "keywords": [],
   "author": "",
