@@ -1,4 +1,3 @@
-```markdown
 # Doc-Pilot
 
 Your AI copilot for project documentation. Doc-Pilot automatically generates comprehensive README files for GitHub repositories using AI.
