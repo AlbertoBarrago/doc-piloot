@@ -42,12 +42,24 @@ app.get('/', (req: Request, res: Response) => {
 app.post("/webhook", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
 
-        console.log("Received webhook payload:", {
-            event: req.headers["x-github-event"],
-            action: req.body.action,
-            ref: req.body.ref,
-            commitMessage: req.body.head_commit?.message
+        console.log("=== Webhook Request ===");
+        console.log("Event Type:", req.headers["x-github-event"]);
+        console.log("Headers:", {
+            delivery: req.headers["x-github-delivery"],
+            signature: req.headers["x-hub-signature-256"]
         });
+
+        if (req.body && req.body.head_commit) {
+            console.log("Push Details:", {
+                ref: req.body.ref,
+                repository: req.body.repository?.full_name,
+                commit: {
+                    id: req.body.head_commit.id,
+                    message: req.body.head_commit.message,
+                    author: req.body.head_commit.author?.name
+                }
+            });
+        }
 
         const signature = req.headers["x-hub-signature-256"];
         if (!signature || Array.isArray(signature)) {
