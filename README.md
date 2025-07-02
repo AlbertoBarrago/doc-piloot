@@ -115,4 +115,5 @@ doc-pilot/
 3.  Make your changes and commit them with clear, descriptive commit messages.
 4.  Submit a pull request.
 
+Please ensure that your code adheres to the project's coding standards and includes appropriate tests.
 
