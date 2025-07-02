@@ -2,10 +2,12 @@
   "name": "doc-pilot",
   "version": "1.0.0",
   "description": "Your AI copilot for project documentation.",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -rf dist",
+    "copy-files": "cp -r public/* dist/",
+    "prebuild": "npm run clean",
     "build": "tsc",
+    "postbuild": "npm run copy-files",
     "start": "cross-env NODE_ENV=production node dist/src/app/index.js",
     "local:test": "tsx tests/localTest.ts",
     "local:test:push": "tsx tests/localTest.ts --push"
@@ -17,6 +19,7 @@
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.8",
+    "copyfiles": "^2.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
