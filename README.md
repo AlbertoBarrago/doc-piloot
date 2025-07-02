@@ -101,8 +101,7 @@ npm run local:test:push
 - `src/app/analyzer.ts`: Repository analysis logic
 - `src/app/gemini.ts`: AI-powered README generation
 - `src/app/github.ts`: GitHub API integration
-- `src/app/pushReadme.ts`: Logic for pushing README to GitHub
-- `scripts/localTest.ts`: Script for local testing
+- `src/services/pushReadme.ts`: Logic for pushing README to GitHub
 
 ### Contributing
 
@@ -110,4 +109,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the ISC License - see the LICENSE file for details.
+This project is licensed under the ISC License—see the LICENSE file for details.

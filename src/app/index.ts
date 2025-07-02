@@ -5,7 +5,7 @@ import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "octokit";
 import { getRepoFilesAnalysis } from "./analyzer.js";
 import { generateReadmeFromAnalysis } from "./gemini.js";
-import { pushReadme } from "./pushReadme.js";
+import { pushReadme } from "../services/pushReadme.js";
 
 dotenv.config();
 

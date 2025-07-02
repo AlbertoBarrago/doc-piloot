@@ -7,8 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "cross-env NODE_ENV=production node dist/src/app/index.js",
-    "local:test": "tsx scripts/localTest.ts",
-    "local:test:push": "tsx scripts/localTest.ts --push"
+    "local:test": "tsx tests/localTest.ts",
+    "local:test:push": "tsx tests/localTest.ts --push"
   },
   "keywords": [],
   "author": "",

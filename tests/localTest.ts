@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { Octokit } from "octokit";
 import { getRepoFilesAnalysis } from "../src/app/analyzer.js";
 import { generateReadmeFromAnalysis } from "../src/app/gemini.js";
-import { pushReadme } from "../src/app/pushReadme.js";
+import { pushReadme } from "../src/services/pushReadme.js";
 
 dotenv.config();
 
@@ -18,12 +18,10 @@ async function test() {
     console.log(`Analyzing repository: ${owner}/${repo}`);
 
     try {
-        // Step 1: Analyze repository files
         console.log("Step 1: Analyzing repository files...");
         const analysis = await getRepoFilesAnalysis(octokit, owner, repo);
         console.log("Repository analysis complete.");
 
-        // Step 2: Generate README content
         console.log("Step 2: Generating README content...");
         const readme = await generateReadmeFromAnalysis(analysis);
         if (!readme) {
@@ -31,7 +29,6 @@ async function test() {
         }
         console.log("=== GENERATED README ===\n", readme);
 
-        // Step 3: Push README to repository (optional)
         const shouldPush = process.argv.includes("--push");
         if (shouldPush) {
             console.log("Step 3: Pushing README to repository...");
