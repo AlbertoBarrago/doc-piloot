@@ -9,13 +9,6 @@ import { pushReadme } from "../services/pushReadme.js";
 import path from 'path';
 import {validateSignature} from "../services/validateSignature.js";
 import {captureRawBody} from "../middleware/index.js";
-declare global {
-    namespace Express {
-        interface Request {
-            rawBody?: Buffer;
-        }
-    }
-}
 
 dotenv.config();
 
@@ -27,8 +20,18 @@ if (!WEBHOOK_SECRET) {
     throw new Error("WEBHOOK_SECRET is not set in environment");
 }
 
+declare global {
+    namespace Express {
+        interface Request {
+            rawBody?: Buffer;
+        }
+    }
+}
+
+// IMPORTANT: Order matters! First capture raw body, then parse JSON
 app.use(captureRawBody);
 
+// JSON parsing should come AFTER raw body capture
 app.use(express.json({
     verify: (req: Request, res: Response, buf: Buffer) => {
         console.log("JSON parser processed body successfully");
@@ -53,11 +56,12 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
         const signature = req.headers["x-hub-signature-256"] as string;
         if (signature && req.rawBody) {
             validateSignature(req.rawBody, signature, WEBHOOK_SECRET);
-            console.log("Signature validation completed");
+            console.log("Signature verified successfully");
         } else {
-            console.log("Skipping signature validation (missing data)");
+            console.log("Skipping signature validation (missing signature or raw body)");
         }
 
+        // Handle ping events from GitHub
         if (req.headers["x-github-event"] === "ping") {
             console.log("Received ping event from GitHub");
             return res.status(200).send("Webhook configured successfully!");
@@ -84,6 +88,7 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
             }
         }
 
+        // ALWAYS check if we have ref before trying to use it
         if (!payload || !payload.ref) {
             console.log("Not a push event or missing ref field");
             console.log("Event type:", req.headers["x-github-event"]);
@@ -163,5 +168,4 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`GitHub App listening on port ${PORT}`);
-    console.log("⚠️ WARNING: Running with webhook signature validation disabled for production");
 });
