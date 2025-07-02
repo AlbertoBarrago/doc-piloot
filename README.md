@@ -108,7 +108,7 @@ doc-pilot/
     └── ...              # Other source files (e.g., API routes, utility functions)
 ```
 
-## Contributing
+## Contributing!
 
 1.  Fork the repository.
 2.  Create a new branch for your feature or bug fix.
