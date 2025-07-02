@@ -6,7 +6,7 @@ import { getRepoFilesAnalysis } from "./analyzer.js";
 import { generateReadmeFromAnalysis } from "./gemini.js";
 import { pushReadme } from "../services/pushReadme.js";
 import path from 'path';
-import {validateSignature} from "../services/commons.js";
+import {validateSignature} from "../services/validateSignature.js";
 import {captureRawBody} from "../middleware/index.js";
 
 dotenv.config();
