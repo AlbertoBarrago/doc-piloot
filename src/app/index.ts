@@ -85,6 +85,11 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
         const owner = repository.owner.login;
         const repo = repository.name;
 
+        console.log("=== Processing repository ===");
+        console.log(`Owner: ${owner}`);
+        console.log(`Repo: ${repo}`);
+        console.log(`Installation ID: ${installationId}`);
+
         const octokit = new Octokit({
             authStrategy: createAppAuth,
             auth: {
