@@ -66,7 +66,14 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
             return res.status(200).send("Webhook configured successfully!");
         }
 
-        let payload = req.body;
+        let payload;
+        try {
+            payload = JSON.parse(req.rawBody?.toString("utf8") || "{}");
+            console.log("✅ Manual parsing successful");
+        } catch (err) {
+            console.error("❌ Manual parse failed:", err);
+            return res.status(400).send("Invalid JSON payload");
+        }
 
         const {installation, repository} = payload;
         if (!installation?.id || !repository?.name || !repository?.owner?.login) {
