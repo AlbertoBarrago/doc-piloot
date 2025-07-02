@@ -1,13 +1,13 @@
 import dotenv from "dotenv";
-import express, { Request, Response } from "express";
-import { createAppAuth } from "@octokit/auth-app";
-import { Octokit } from "octokit";
-import { getRepoFilesAnalysis } from "./analyzer.js";
-import { generateReadmeFromAnalysis } from "./gemini.js";
-import { pushReadme } from "../services/pushReadme.js";
+import express, {Request, Response} from "express";
+import {createAppAuth} from "@octokit/auth-app";
+import {Octokit} from "octokit";
+import {getRepoFilesAnalysis} from "./analyzer.js";
+import {generateReadmeFromAnalysis} from "./gemini.js";
+import {pushReadme} from "../services/pushReadme.js";
 import path from "path";
-import { verifySignature } from "../services/validateSignature.js";
-import { captureRawBody } from "../middleware/index.js";
+import {verifySignature} from "../services/validateSignature.js";
+import {captureRawBody} from "../middleware/index.js";
 
 dotenv.config();
 
@@ -48,11 +48,12 @@ app.get("/", (_req: Request, res: Response) => {
     res.sendFile(indexPath);
 });
 
-app.post("/webhook", express.raw({ type: "*/*" }), async (req: Request, res: Response): Promise<any> => {
+app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Response): Promise<any> => {
     try {
         console.log("=== Incoming GitHub Webhook ===");
         const signature = req.headers["x-hub-signature-256"] as string;
         const eventType = req.headers["x-github-event"] as string;
+        console.log("eventType:", eventType);
 
         if (signature && req.rawBody) {
             verifySignature(req.rawBody, signature, WEBHOOK_SECRET);
@@ -81,7 +82,7 @@ app.post("/webhook", express.raw({ type: "*/*" }), async (req: Request, res: Res
             }
         }
 
-        const { installation, repository } = payload;
+        const {installation, repository} = payload;
         if (!installation?.id || !repository?.name || !repository?.owner?.login) {
             console.error("❌ Missing installation or repo info");
             return res.status(400).send("Missing installation or repository information");
@@ -100,50 +101,17 @@ app.post("/webhook", express.raw({ type: "*/*" }), async (req: Request, res: Res
             },
         });
 
-        if (eventType === "workflow_run") {
-            const workflowRun = payload.workflow_run;
-            let workflowName;
-
-            if (workflowRun?.workflow_id) {
-                try {
-                    const { data } = await octokit.rest.actions.getWorkflow({
-                        owner,
-                        repo,
-                        workflow_id: workflowRun.workflow_id,
-                    });
-                    workflowName = data.name;
-                } catch (err) {
-                    console.warn("⚠️ Failed to fetch workflow name:", err);
-                }
-            }
-
-            const shouldProcess = req.query.doc === 'true' ||
-                (workflowName && workflowName.toLowerCase().includes("documentation"));
-
-            if (!shouldProcess) {
-                return res.status(200).send("Skipping non-documentation workflow");
-            }
+        const shouldGenerateDoc = payload.head_commit?.message?.includes("--doc");
+        if (!shouldGenerateDoc) {
+            return res.status(200).send("Skipping: Use ?doc=true or add --doc to commit message");
         }
 
-        // === Push Event ===
-        else if (eventType === "push") {
+        if (shouldGenerateDoc) {
             const branch = payload.ref?.replace("refs/heads/", "");
 
             if (!branch || branch !== "main") {
                 return res.status(200).send("Skipping: Not on main branch");
             }
-
-            const shouldGenerateDoc = req.query.doc === "true" ||
-                payload.head_commit?.message?.includes("--doc");
-
-            if (!shouldGenerateDoc) {
-                return res.status(200).send("Skipping: Use ?doc=true or add --doc to commit message");
-            }
-        }
-
-        else {
-            console.log(`Skipping unsupported event type: ${eventType}`);
-            return res.status(200).send(`Unsupported event type: ${eventType}`);
         }
 
         console.log(`Generating README for ${owner}/${repo}`);
@@ -155,7 +123,7 @@ app.post("/webhook", express.raw({ type: "*/*" }), async (req: Request, res: Res
             return res.status(200).send("Empty README generated");
         }
 
-        await pushReadme({ octokit, owner, repo, content: readmeContent });
+        await pushReadme({octokit, owner, repo, content: readmeContent});
 
         console.log("✅ README generated and pushed");
         return res.status(200).send("README successfully generated and pushed");
