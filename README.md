@@ -1,5 +1,5 @@
-# Doc-Pilot
-Your AI copilot for project documentation. Doc-Pilot automatically generates comprehensive README files for GitHub repositories using AI.
+# Doc-Piloot
+Your AI copilot for project documentation. Doc-Piloot automatically generates comprehensive README files for GitHub repositories using AI.
 
 ## Features
 
