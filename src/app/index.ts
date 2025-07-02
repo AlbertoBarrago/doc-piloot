@@ -44,7 +44,6 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
         console.log("Content-Type:", req.headers["content-type"]);
         console.log("Event Type:", req.headers["x-github-event"]);
 
-        // Check signature
         const signature = req.headers["x-hub-signature-256"] as string;
         if (!signature) {
             console.error("Missing signature header");
