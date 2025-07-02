@@ -99,7 +99,12 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
             },
         });
 
+        console.log("✅ Octokit instance created");
+
         const shouldGenerateDoc = payload.head_commit?.message?.includes("--doc");
+
+        console.log("shouldGenerateDoc:", shouldGenerateDoc);
+
         if (!shouldGenerateDoc) {
             return res.status(200).send("Skipping: Use ?doc=true or add --doc to commit message");
         }
