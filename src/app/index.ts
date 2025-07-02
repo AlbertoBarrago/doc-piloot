@@ -1,4 +1,3 @@
-
 import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import { createAppAuth } from "@octokit/auth-app";
@@ -28,10 +27,8 @@ declare global {
     }
 }
 
-// IMPORTANT: Order matters! First capture raw body, then parse JSON
 app.use(captureRawBody);
 
-// JSON parsing should come AFTER raw body capture
 app.use(express.json({
     verify: (req: Request, res: Response, buf: Buffer) => {
         console.log("JSON parser processed body successfully");
@@ -56,7 +53,6 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
         const signature = req.headers["x-hub-signature-256"] as string;
         if (signature && req.rawBody) {
             validateSignature(req.rawBody, signature, WEBHOOK_SECRET);
-            console.log("Signature verified successfully");
         } else {
             console.log("Skipping signature validation (missing signature or raw body)");
         }
@@ -88,28 +84,49 @@ app.post("/webhook", async (req: express.Request, res: express.Response): Promis
             }
         }
 
-        // ALWAYS check if we have ref before trying to use it
-        if (!payload || !payload.ref) {
-            console.log("Not a push event or missing ref field");
-            console.log("Event type:", req.headers["x-github-event"]);
-            return res.status(200).send("Skipping: Not a push event or missing ref");
+        const eventType = req.headers["x-github-event"] as string;
+        console.log(`Processing ${eventType} event`);
+
+        if (eventType === "workflow_run") {
+            console.log("Workflow run event received");
+
+            const workflowName = payload.workflow_run?.workflow_name;
+            console.log(`Workflow name: ${workflowName}`);
+
+            const shouldProcess = req.query.doc === 'true' ||
+                (workflowName && workflowName.includes('documentation'));
+
+            if (!shouldProcess) {
+                console.log("Skipping: Not a documentation workflow");
+                return res.status(200).send("Skipping: Not a documentation workflow");
+            }
         }
+        else if (eventType === "push") {
+            if (!payload || !payload.ref) {
+                console.log("Missing ref field in push event");
+                return res.status(200).send("Skipping: Missing ref field in push event");
+            }
 
-        const branch = payload.ref.replace('refs/heads/', '');
-        console.log("Branch:", branch);
+            const branch = payload.ref.replace('refs/heads/', '');
+            console.log("Branch:", branch);
 
-        if (branch !== 'main') {
-            console.log("Not on main branch, skipping");
-            return res.status(200).send("Skipping: Not on main branch");
+            if (branch !== 'main') {
+                console.log("Not on main branch, skipping");
+                return res.status(200).send("Skipping: Not on main branch");
+            }
+
+            console.log("Checking commit message:", payload.head_commit?.message);
+            const shouldGenerateDoc = req.query.doc === 'true' ||
+                (payload.head_commit && payload.head_commit.message.includes('--doc'));
+
+            console.log("Should generate documentation:", shouldGenerateDoc);
+            if (!shouldGenerateDoc) {
+                return res.status(200).send("Skipping documentation generation. Use ?doc=true parameter or include --doc in commit message.");
+            }
         }
-
-        console.log("Checking commit message:", payload.head_commit?.message);
-        const shouldGenerateDoc = req.query.doc === 'true' ||
-            (payload.head_commit && payload.head_commit.message.includes('--doc'));
-
-        console.log("Should generate documentation:", shouldGenerateDoc);
-        if (!shouldGenerateDoc) {
-            return res.status(200).send("Skipping documentation generation. Use ?doc=true parameter or include --doc in commit message.");
+        else {
+            console.log(`Skipping unsupported event type: ${eventType}`);
+            return res.status(200).send(`Skipping unsupported event type: ${eventType}`);
         }
 
         if (!payload.installation || !payload.repository) {
