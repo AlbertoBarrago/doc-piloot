@@ -3,10 +3,10 @@ import express, { Request, Response } from "express";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "octokit";
 import { getRepoFilesAnalysis } from "./analyzer.js";
-import { generateReadmeFromAnalysis } from "./gemini.js";
 import { pushReadme } from "../services/pushReadme.js";
 import path from "path";
 import { verifySignature } from "../services/validateSignature.js";
+import {generateReadmeWithRetries} from "../services/generateContent.js";
 
 dotenv.config();
 
@@ -132,8 +132,13 @@ app.post("/webhook", express.raw({ type: "*/*" }), async (req: Request, res: Res
         console.log(`Generating README for ${owner}/${repo}`);
 
         const analysisText = await getRepoFilesAnalysis(octokit, owner, repo);
-        const readmeContent = await generateReadmeFromAnalysis(analysisText);
-
+        let readmeContent;
+        try {
+            readmeContent = await generateReadmeWithRetries(analysisText);
+        } catch (e) {
+            console.error("❌ Failed to generate README due to API error:", e);
+            return res.status(503).send("Model is currently overloaded, please try again later.");
+        }
         if (!readmeContent) {
             console.warn("⚠️ Empty README content generated");
             return res.status(200).send("Empty README generated");
