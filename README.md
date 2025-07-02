@@ -1,5 +1,4 @@
 # Doc-Pilot
-
 Your AI copilot for project documentation. Doc-Pilot automatically generates comprehensive README files for GitHub repositories using AI.
 
 ## Features
@@ -97,7 +96,7 @@ doc-pilot/
 ├── tsconfig.json        # TypeScript configuration file
 ```
 
-## Contributing
+## Contributing!
 
 Contributions are welcome! Here's how you can contribute:
 
@@ -111,6 +110,5 @@ Please ensure your code adheres to the project's coding standards and includes a
 
 ## License
 
-[Specify the license under which your project is released.  For example, if using the MIT license:]
-
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. [Create a LICENSE file in the repository root with the license text.]
+

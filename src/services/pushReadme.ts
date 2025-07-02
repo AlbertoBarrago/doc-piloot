@@ -4,7 +4,7 @@ interface PushReadmeOptions {
     octokit: Octokit;
     owner: string;
     repo: string;
-    content: string;
+    content: string | null;
     branchName?: string;
     commitMessage?: string;
     prTitle?: string;
@@ -22,6 +22,7 @@ export async function pushReadme({
                                      prBody = "This PR updates the README.md file with automatically generated content from doc-pilot."
                                  }: PushReadmeOptions) {
     try {
+        if(!content) return;
         let readmeSha: string | undefined;
         try {
             const {data: readmeData} = await octokit.rest.repos.getContent({

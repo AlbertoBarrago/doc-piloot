@@ -3,20 +3,22 @@ import express, { Request, Response } from "express";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "octokit";
 import { getRepoFilesAnalysis } from "./analyzer.js";
-import { generateReadmeFromAnalysis } from "./gemini.js";
 import { pushReadme } from "../services/pushReadme.js";
-import path from 'path';
-import {verifySignature} from "../services/commons.js";
-
+import path from "path";
+import { verifySignature } from "../services/validateSignature.js";
+import {generateReadmeWithRetries} from "../services/generateContent.js";
 
 dotenv.config();
 
-const app = express();
+const {
+    APP_ID,
+    PRIVATE_KEY,
+    WEBHOOK_SECRET,
+    PORT = 3000,
+} = process.env;
 
-
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-if (!WEBHOOK_SECRET) {
-    throw new Error("WEBHOOK_SECRET is not set in environment");
+if (!APP_ID || !PRIVATE_KEY || !WEBHOOK_SECRET) {
+    throw new Error("Missing required environment variables: APP_ID, PRIVATE_KEY, or WEBHOOK_SECRET.");
 }
 
 declare global {
@@ -27,95 +29,131 @@ declare global {
     }
 }
 
-app.use(express.json({
-    verify: (req: Request, res: Response, buf: Buffer) => {
-        req.rawBody = buf;
-    }
-}));
-
-const publicPath = path.join(process.cwd(), 'public');
+const app = express();
+const publicPath = path.join(process.cwd(), "public");
 
 app.use(express.static(publicPath));
 
-app.get('/', (req: Request, res: Response) => {
-    const indexPath = path.join(publicPath, 'index.html');
+app.use((req, res, next) => {
+    if (req.path === "/webhook") {
+        return next();
+    }
+    express.json({
+        verify: (req: Request, _res: Response, buf: Buffer) => {
+            req.rawBody = buf;
+        },
+    })(req, res, next);
+});
+
+app.get("/", (_req: Request, res: Response) => {
+    const indexPath = path.join(publicPath, "index.html");
     res.sendFile(indexPath);
 });
 
-
-// @ts-ignore
-app.post("/webhook", async (req: Request, res: Response) => {
+app.post("/webhook", express.raw({ type: "*/*" }), async (req: Request, res: Response): Promise<any> => {
     try {
-        const signature = req.headers["x-hub-signature-256"];
-        if (!signature || Array.isArray(signature)) {
-            return res.status(401).send("Missing or invalid signature");
+        const rawBody = req.body;
+        const signature = req.headers["x-hub-signature-256"] as string | undefined;
+        const eventType = req.headers["x-github-event"] as string | undefined;
+
+        if (!signature || !rawBody) {
+            console.warn("⚠️ Missing signature or raw body — skipping validation.");
+            return res.status(400).send("Missing signature or raw body");
         }
 
-        const rawBody = req.rawBody?.toString("utf-8");
-        if (!rawBody) {
-            return res.status(400).send("Missing raw request body");
+        verifySignature(rawBody, signature, WEBHOOK_SECRET);
+
+        if (eventType === "ping") {
+            console.log("✅ Ping event received.");
+            return res.status(200).send("Webhook configured successfully!");
         }
 
-        if (!verifySignature(WEBHOOK_SECRET, rawBody, signature)) {
-            return res.status(401).send("Invalid signature");
+        let payload;
+        try {
+            payload = JSON.parse(rawBody.toString("utf8"));
+            console.log("✅ Payload parsed");
+        } catch (err) {
+            console.error("❌ Failed to parse JSON payload:", err);
+            return res.status(400).send("Invalid JSON payload");
         }
 
-        const payload = req.body;
-
-        if (!payload.installation) {
-            return res.status(400).send("No installation info in payload");
+        const { installation, repository } = payload;
+        if (!installation?.id || !repository?.name || !repository?.owner?.login) {
+            console.error("❌ Missing installation or repository info");
+            return res.status(400).send("Missing installation or repository information");
         }
 
-        if (!payload.repository) {
-            return res.status(400).send("No repository info in payload");
-        }
+        const installationId = installation.id;
+        const owner = repository.owner.login;
+        const repo = repository.name;
 
-        const installationId: number | undefined = payload.installation.id;
-        const owner: string | undefined = payload.repository.owner?.login;
-        const repo: string | undefined = payload.repository.name;
-
-        if (!installationId || !owner || !repo) {
-            return res.status(400).send("Missing installationId, owner, or repo");
-        }
+        console.log(`Processing repo: ${owner}/${repo}, Installation ID: ${installationId}`);
 
         const octokit = new Octokit({
             authStrategy: createAppAuth,
             auth: {
-                appId: Number(process.env.APP_ID),
-                privateKey: process.env.PRIVATE_KEY!.replace(/\\n/g, "\n"),
+                appId: Number(APP_ID),
+                privateKey: PRIVATE_KEY.replace(/\\n/g, "\n"),
                 installationId,
             },
         });
 
-        const analysisText = await getRepoFilesAnalysis(octokit, owner, repo);
-        const readmeContent = await generateReadmeFromAnalysis(analysisText);
-        const shouldGenerateDoc = req.query.doc === 'true' || payload.action === 'doc';
+        console.log("✅ Octokit instance created");
+
+        const branch = payload.workflow_run?.head_branch ||
+            payload.workflow_job?.head_branch ||
+            null;
+
+        if (!branch || branch !== "main") {
+            console.log("Skipping: Not on main branch", branch ?? null);
+            return res.status(200).send("Skipping: Not on main branch");
+        }
+
+        let commitMessage = payload.head_commit?.message;
+
+        if (!commitMessage) {
+            const { data: commits } = await octokit.rest.repos.listCommits({
+                owner,
+                repo,
+                sha: branch,
+                per_page: 1,
+            });
+            commitMessage = commits[0]?.commit?.message || "";
+        }
+
+        const shouldGenerateDoc = commitMessage.includes("--doc");
+
+        console.log("shouldGenerateDoc:", shouldGenerateDoc);
 
         if (!shouldGenerateDoc) {
-            return res.status(200).send("Skipping documentation generation. Use ?doc=true parameter to generate README.");
+            return res.status(200).send("Skipping: Use ?doc=true or add --doc to commit message");
         }
 
-        console.log(`=== GENERATED README for ${owner}/${repo} ===\n`, readmeContent);
+        console.log(`Generating README for ${owner}/${repo}`);
 
+        const analysisText = await getRepoFilesAnalysis(octokit, owner, repo);
+        let readmeContent;
+        try {
+            readmeContent = await generateReadmeWithRetries(analysisText);
+        } catch (e) {
+            console.error("❌ Failed to generate README due to API error:", e);
+            return res.status(503).send("Model is currently overloaded, please try again later.");
+        }
         if (!readmeContent) {
-            throw new Error("Generated README content is empty or undefined");
+            console.warn("⚠️ Empty README content generated");
+            return res.status(200).send("Empty README generated");
         }
 
-        await pushReadme({
-            octokit,
-            owner,
-            repo,
-            content: readmeContent,
-        });
+        await pushReadme({ octokit, owner, repo, content: readmeContent });
 
-        res.status(200).send("README generated and pushed successfully");
+        console.log("✅ README generated and pushed");
+        return res.status(200).send("README successfully generated and pushed");
     } catch (error) {
-        console.error("Error handling webhook:", error);
-        res.status(500).send("Internal Server Error");
+        console.error("❌ Error in webhook handler:", error);
+        return res.status(500).send("Internal Server Error");
     }
 });
 
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`GitHub App listening on port ${PORT}`);
+    console.log(`🚀 GitHub App listening on port ${PORT}`);
 });

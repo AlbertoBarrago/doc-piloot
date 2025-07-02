@@ -15,6 +15,8 @@ RUN npm run build
 
 ENV NODE_ENV=production
 
+ENV NODE_OPTIONS=--openssl-legacy-provider
+
 EXPOSE 3000
 
 CMD [ "npm", "start" ]
