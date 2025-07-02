@@ -31,6 +31,19 @@ app.use(express.json({
     }
 }));
 
+app.use((req: Request, res: Response, next) => {
+    if (req.method === 'POST' && !req.body) {
+        console.log('Raw payload:', req.rawBody?.toString());
+        try {
+            req.body = JSON.parse(req.rawBody?.toString() || '{}');
+        } catch (e) {
+            console.error('Failed to parse request body:', e);
+        }
+    }
+    next();
+});
+
+
 const publicPath = path.join(process.cwd(), 'public');
 app.use(express.static(publicPath));
 
