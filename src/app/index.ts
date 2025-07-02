@@ -99,11 +99,12 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
             },
         });
 
-        console.log("✅ Octokit instance created");
+        console.log("✅ Octokit instance created", JSON.parse(payload));
 
         const branch = payload.ref?.replace("refs/heads/", "");
 
         if (!branch || branch !== "main") {
+            console.log("Skipping: Not on main branch", branch ?? null);
             return res.status(200).send("Skipping: Not on main branch");
         }
 
@@ -128,9 +129,8 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
         }
 
         if (shouldGenerateDoc) {
-            const branch = payload.ref?.replace("refs/heads/", "");
-
             if (!branch || branch !== "main") {
+                console.log("Skipping: Not on main branch", branch ?? null);
                 return res.status(200).send("Skipping: Not on main branch");
             }
         }
