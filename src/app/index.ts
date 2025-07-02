@@ -41,6 +41,14 @@ app.get('/', (req: Request, res: Response) => {
 
 app.post("/webhook", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
+
+        console.log("Received webhook payload:", {
+            event: req.headers["x-github-event"],
+            action: req.body.action,
+            ref: req.body.ref,
+            commitMessage: req.body.head_commit?.message
+        });
+
         const signature = req.headers["x-hub-signature-256"];
         if (!signature || Array.isArray(signature)) {
             return res.status(401).send("Missing or invalid signature");
