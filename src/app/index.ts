@@ -71,7 +71,7 @@ app.post("/webhook", express.raw({ type: "*/*" }), async (req: Request, res: Res
         let payload;
         try {
             payload = JSON.parse(rawBody.toString("utf8"));
-            console.log("✅ Payload parsed:", payload);
+            console.log("✅ Payload parsed");
         } catch (err) {
             console.error("❌ Failed to parse JSON payload:", err);
             return res.status(400).send("Invalid JSON payload");
