@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import util from 'node:util';
 import express, { Request, Response } from "express";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "octokit";
@@ -25,6 +26,19 @@ declare global {
     }
 }
 
+app.use((req: Request, res: Response, next) => {
+    let data = '';
+    req.on('data', chunk => {
+        data += chunk;
+    });
+
+    req.on('end', () => {
+        req.rawBody = Buffer.from(data);
+        next();
+    });
+});
+
+
 app.use(express.json({
     verify: (req: Request, res: Response, buf: Buffer) => {
         req.rawBody = buf;
@@ -33,15 +47,18 @@ app.use(express.json({
 
 app.use((req: Request, res: Response, next) => {
     if (req.method === 'POST' && !req.body) {
-        console.log('Raw payload:', req.rawBody?.toString());
+        console.log('Raw payload ricevuto:', req.rawBody?.toString());
         try {
             req.body = JSON.parse(req.rawBody?.toString() || '{}');
+            console.log('Payload convertito manualmente in JSON');
         } catch (e) {
-            console.error('Failed to parse request body:', e);
+            console.error('Errore nel parsing del body:', e);
+            console.log('Contenuto ricevuto non è un JSON valido');
         }
     }
     next();
 });
+
 
 
 const publicPath = path.join(process.cwd(), 'public');
@@ -54,25 +71,26 @@ app.get('/', (req: Request, res: Response) => {
 
 app.post("/webhook", async (req: express.Request, res: express.Response): Promise<any> => {
     try {
-
         console.log("=== Webhook Request ===");
+        console.log("Method:", req.method);
+        console.log("URL:", req.url);
+        console.log("Query params:", req.query);
+        console.log("Content-Type:", req.headers["content-type"]);
+        console.log("Content-Length:", req.headers["content-length"]);
         console.log("Event Type:", req.headers["x-github-event"]);
-        console.log("Headers:", {
-            delivery: req.headers["x-github-delivery"],
-            signature: req.headers["x-hub-signature-256"]
-        });
+        console.log("Headers:", JSON.stringify(req.headers, null, 2));
 
-        if (req.body && req.body.head_commit) {
-            console.log("Push Details:", {
-                ref: req.body.ref,
-                repository: req.body.repository?.full_name,
-                commit: {
-                    id: req.body.head_commit.id,
-                    message: req.body.head_commit.message,
-                    author: req.body.head_commit.author?.name
-                }
-            });
+        // Log del corpo raw
+        console.log("Raw Body exists:", !!req.rawBody);
+        if (req.rawBody) {
+            console.log("Raw Body length:", req.rawBody.length);
+            console.log("Raw Body content:", req.rawBody.toString('utf8'));
         }
+
+        // Log del corpo parsato
+        console.log("Body exists:", !!req.body);
+        console.log("Body content:", JSON.stringify(req.body, null, 2));
+
 
         const signature = req.headers["x-hub-signature-256"];
         if (!signature || Array.isArray(signature)) {
