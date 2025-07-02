@@ -50,13 +50,15 @@ app.get("/", (_req: Request, res: Response) => {
 
 app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Response): Promise<any> => {
     try {
+        const rawBody = req.body;
+
         console.log("=== Incoming GitHub Webhook ===");
         const signature = req.headers["x-hub-signature-256"] as string;
         const eventType = req.headers["x-github-event"] as string;
         console.log("eventType:", eventType);
 
         if (signature && req.rawBody) {
-            verifySignature(req.rawBody, signature, WEBHOOK_SECRET);
+            verifySignature(rawBody, signature, WEBHOOK_SECRET);
         } else {
             console.warn("⚠️ Missing signature or raw body — skipping validation.");
         }
@@ -68,8 +70,8 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
 
         let payload;
         try {
-            payload = JSON.parse(req.rawBody?.toString("utf8") || "{}");
-            console.log("✅ Manual parsing successful");
+            payload = JSON.parse(rawBody.toString("utf8"));
+            console.log("✅ Manual parsing successful", payload);
         } catch (err) {
             console.error("❌ Manual parse failed:", err);
             return res.status(400).send("Invalid JSON payload");
@@ -99,7 +101,7 @@ app.post("/webhook", express.raw({type: "*/*"}), async (req: Request, res: Respo
             },
         });
 
-        console.log("✅ Octokit instance created", JSON.parse(payload));
+        console.log("✅ Octokit instance created");
 
         const branch = payload.ref?.replace("refs/heads/", "");
 
