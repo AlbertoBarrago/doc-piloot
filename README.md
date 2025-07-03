@@ -1,4 +1,5 @@
 # Doc-Pilot
+
 Your AI copilot for project documentation. Doc-Pilot automatically generates comprehensive README files for GitHub repositories using AI.
 
 ## Features
@@ -6,12 +7,12 @@ Your AI copilot for project documentation. Doc-Pilot automatically generates com
 - **Automated README Generation**: Analyzes your repository and generates a professional README.md file.
 - **GitHub Integration**: Designed to work seamlessly as a GitHub App or can be run locally.
 - **Smart Analysis**: Detects programming languages, frameworks, and project structure to provide accurate and relevant documentation.
-- **Customizable Output**: Provides options to tailor the README content to your specific needs.
-- **AI-Powered Insights**: Leverages advanced AI models to understand your code and generate insightful documentation.
+- **Customizable Output**:  Allows for some degree of customization (this could be further expanded in the future).
+- **AI Powered**:  Uses Google Gemini AI to understand your project.
 
 ## Installation
 
-To install and run Doc-Pilot locally, follow these steps:
+To run Doc-Pilot locally, follow these steps:
 
 1.  **Clone the repository:**
 
@@ -28,15 +29,16 @@ To install and run Doc-Pilot locally, follow these steps:
 
 3.  **Set up environment variables:**
 
-    Create a `.env` file in the root directory and add the necessary environment variables. Example:
+    Create a `.env` file in the root directory with the following variables:
 
     ```
-    GITHUB_TOKEN=<your_github_token>
-    GOOGLE_API_KEY=<your_google_api_key>
+    GOOGLE_GENAI_API_KEY=<Your_Google_Gemini_API_Key>
+    GITHUB_TOKEN=<Your_GitHub_Token>  # If using GitHub integration
     ```
-    *Note: Obtain a Github Token with appropriate permissions to interact with your repository and a Google API key that allows you to use the Google AI models.*
 
-4.  **Compile TypeScript:**
+    **Note:** Obtain your Google Gemini API Key from the Google AI Studio.  For GitHub integration, generate a personal access token with the appropriate permissions (e.g., `repo` for full repository access, or narrower permissions as required).
+
+4.  **Build the project:**
 
     ```bash
     npm run build
@@ -44,71 +46,84 @@ To install and run Doc-Pilot locally, follow these steps:
 
 ## Usage
 
-### Running Doc-Pilot
-
-1.  **Start the server:**
+1.  **Run the application:**
 
     ```bash
     npm start
     ```
 
-    This will start the Doc-Pilot server.
+    This will start the Express.js server. You may need to configure the exact entrypoint based on how you intend to use Doc-Pilot (e.g., as a GitHub App responding to webhooks, or via a local API endpoint). The default setup likely expects certain environment variables to be set.
 
-### Interacting with Doc-Pilot
+2. **Example - Calling the API**
+   (Assuming you have an Express endpoint that takes the repository URL)
 
-*   **API Endpoints**:  Doc-Pilot exposes API endpoints to trigger README generation and retrieve documentation information. Refer to the API documentation (once created) for details on request formats and response structures.
+    ```bash
+    curl -X POST -H "Content-Type: application/json" -d '{"repoUrl": "https://github.com/owner/repo"}' http://localhost:3000/generate-readme
+    ```
 
-Example API usage with `curl`:
-
-```bash
-curl -X POST -H "Content-Type: application/json" -d '{
-  "repository_url": "<your_repository_url>"
-}' http://localhost:3000/generate-readme
-```
-
-(Replace `<your_repository_url>` with the actual URL of your GitHub repository and `http://localhost:3000/generate-readme` with the actual API endpoint URL if it's different).
+    Replace `http://localhost:3000/generate-readme` with the actual endpoint if different. You'll need to implement the actual API endpoint using Express within the `src` directory.
 
 ## Technologies Used
 
--   **Languages**:
-    -   TypeScript
-    -   HTML
--   **Frameworks**:
-    -   Express.js
--   **Libraries**:
-    -   `@google/genai`: For accessing Google AI models.
-    -   `@octokit/rest`: For interacting with the GitHub API.
-    -   `octokit`: For interacting with the GitHub API.
-    -   `dotenv`: For managing environment variables.
+*   **Programming Languages:** TypeScript, HTML
+*   **Framework:** Express.js
+*   **AI Library:** `@google/genai`
+*   **GitHub API Library:** `@octokit/rest`, `octokit`
+*   **Other Libraries:** `dotenv`, `cross-env`, `copyfiles`
 
 ## Project Structure
 
 ```
 doc-pilot/
-├── public/              # Static assets (e.g., HTML, CSS)
-├── src/                 # Source code
-│   ├── index.ts           # Main application entry point
-│   ├── ...                # Other TypeScript files
-├── tests/               # Unit and integration tests
-├── README.md            # This file
-├── package-lock.json    # Dependency lock file
-├── package.json         # Project metadata and dependencies
-├── tsconfig.json        # TypeScript configuration file
+├── README.md             # This file
+├── package-lock.json     # Records the exact versions of dependencies
+├── package.json          # Project metadata and dependencies
+├── tsconfig.json         # TypeScript compiler configuration
+├── public/               # Static assets (e.g., HTML, CSS)
+│   └── ...
+├── src/                  # Source code
+│   ├── index.ts          # Main application entry point (likely)
+│   └── ...
+├── tests/                # Unit and integration tests
+│   └── ...
 ```
 
-## Contributing!
+## Contributing
 
-Contributions are welcome! Here's how you can contribute:
+Contributions are welcome!  Here are the general guidelines:
 
 1.  Fork the repository.
 2.  Create a new branch for your feature or bug fix.
-3.  Make your changes.
+3.  Implement your changes.
 4.  Write tests for your changes.
 5.  Submit a pull request.
 
-Please ensure your code adheres to the project's coding standards and includes appropriate documentation.
+Please ensure your code adheres to the project's coding style and that all tests pass.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. [Create a LICENSE file in the repository root with the license text.]
+[Choose a license and add it here, e.g., MIT License, Apache 2.0, etc. If no license is specified, then all rights are reserved.]
 
+```
+MIT License
+
+Copyright (c) [Year] [Your Name]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
