@@ -100,9 +100,9 @@ app.post("/webhook", express.raw({ type: "*/*" }), async (req: Request, res: Res
 
         console.log("✅ Octokit instance created");
 
-        const branch = payload.workflow_run?.head_branch ||
-            payload.workflow_job?.head_branch ||
-            null;
+        const branch= payload.ref.replace('refs/heads/', '');
+
+        console.log("branch:", branch);
 
         if (!branch || branch !== "main") {
             console.log("Skipping: Not on main branch", branch ?? null);
