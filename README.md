@@ -61,7 +61,6 @@ The app is named doc-piloot because `doc-pilot` is a reserved name...
 ## Technologies Used
 
 -   **Language:** TypeScript, HTML
--   **Framework:** Express.js
 -   **AI Model:** Google Gemini (using `@google/genai`)
 -   **GitHub API:** Octokit (`@octokit/rest` and `octokit`)
 -   **Environment Variables:** dotenv
