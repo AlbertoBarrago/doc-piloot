@@ -94,8 +94,6 @@ We welcome contributions to Doc-Pilot!  Please follow these guidelines:
 
 ## License
 
-[Specify the license under which the project is released.  For example, MIT License:]
-
 MIT License
 
 Copyright (c) [Year] [Your Name/Organization]
