@@ -96,7 +96,7 @@ We welcome contributions to Doc-Pilot!  Please follow these guidelines:
 
 MIT License
 
-Copyright (c) [Year] [Your Name/Organization]
+Copyright (c) 2025 Alberto Barrago
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
